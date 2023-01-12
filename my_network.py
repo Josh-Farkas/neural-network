@@ -7,28 +7,29 @@ class MyNetwork:
         # List of vectors of correct size for every layer but the first
         self.biases = [np.random.randn(layer_size, 1) for layer_size in sizes[1:]]
 
-        # Weights need to be a matrix where each row is an input from one node and each column is an output to one node
-
         """
+        Weights need to be a matrix where each row is an input from one node and each column is an output to one node
+
         Loop through all sizes 2 adjacent layers at a time
         the size of the one on the left is the width of the matrix
         the size of the one on the right is the height of the matrix
         """
-
-        # Looped version
-        # self.weights = []
-        # for left_layer_size, right_layer_size in zip(sizes[:-1], sizes[1:]):
-        #     weights.append(np.random.randn(right_layer_size, left_layer_size))
-
-        # List comprehension version
         self.weights = [np.random.randn(right_layer_size, left_layer_size)
                         for right_layer_size, left_layer_size in zip(sizes[:-1], sizes[1:])]
 
-        self.zs = []
-        
 
-    def feedforward():
-        pass
+    def feedforward(self, activation):
+        """
+        Takes in the input layer activations for the network and 
+        returns the output layer activations
+        """
+        for bias, weight in zip(self.biases, self.weights):
+            z = np.dot(activation, weight) + bias
+            activation = self.sigmoid(z)
+        return activation
+            
+
+
 
 
     def SGD(self, epochs, training_data, mini_batch_size, learning_rate, test_data = None):
@@ -62,7 +63,8 @@ class MyNetwork:
         sum_nabla_w = [np.zeros(w.shape) for w in self.weights]
 
         for input, correct_output in mini_batch:
-            nabla_b, nabla_w = self.backprop(input, correct_output)
+            output_layer = self.feedforward(input)
+            nabla_b, nabla_w = self.backprop(output_layer, correct_output)
             sum_nabla_b = [current + sum for current, sum in zip(nabla_b, sum_nabla_b)]
             sum_nabla_w = [current + sum for current, sum in zip(nabla_w, sum_nabla_w)]
         
@@ -71,8 +73,27 @@ class MyNetwork:
         self.weights = [learning_rate * a/len(mini_batch) for a in sum_nabla_w]
 
 
-    def backprop(self, x, y):
-        pass
+    def backprop(self, output_layer, correct_output):
+        zs = []
+        activation = output_layer
+        activations = [activation] # init with the output layer already in it
+
+        """
+        feed forward through the network and store all zs and activations for use later
+        this is the same math as the feedforward method
+        """
+        for bias, weight in zip(self.biases, self.weights):
+            z = np.dot(activation, weight)
+            activation = self.sigmoid(z)
+            zs.append(z)
+            activations.append(activation)
+        
+        """
+        Backwards pass through the network. Error of the final layer is equal to 
+        """
+
+    def cost_derivative(output, correct_output):
+        return correct_output - output
 
     # the sigmoid function
     def sigmoid(self, z):
