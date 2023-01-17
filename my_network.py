@@ -74,6 +74,10 @@ class MyNetwork:
 
 
     def backprop(self, output_layer, correct_output):
+
+        nabla_b = [np.zeros(layer.shape) for layer in self.biases]
+        nabla_w = [np.zeros(layer.shape) for layer in self.weights]
+
         zs = []
         activation = output_layer
         activations = [activation] # init with the output layer already in it
