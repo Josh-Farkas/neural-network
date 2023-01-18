@@ -3,7 +3,9 @@ import random
 
 class MyNetwork:
     def __init__(self, sizes):
-        
+
+        self.num_layers = len(sizes)
+
         # List of vectors of correct size for every layer but the first
         self.biases = [np.random.randn(layer_size, 1) for layer_size in sizes[1:]]
 
@@ -28,8 +30,6 @@ class MyNetwork:
             activation = self.sigmoid(z)
         return activation
             
-
-
 
 
     def SGD(self, epochs, training_data, mini_batch_size, learning_rate, test_data = None):
@@ -87,17 +87,33 @@ class MyNetwork:
         this is the same math as the feedforward method
         """
         for bias, weight in zip(self.biases, self.weights):
-            z = np.dot(activation, weight)
+            z = np.dot(activation, weight) + bias
             activation = self.sigmoid(z)
             zs.append(z)
             activations.append(activation)
         
         """
         Backwards pass through the network. Error of the final layer is equal to 
+        Cost Derivative * Sigmoid Prime (z of the final layer). Each layer
+        after that is the weight of the next layer * the error of the next layer
+        * sigmoid prime of the zs of this layer
         """
+        delta = self.cost_derivative(activations[-1], correct_output) * self.sigmoid_prime(zs[-1])
+
+        nabla_b[-1] = delta
+        nabla_w[-1] = np.dot(activations[-2].transpose(), delta)
+
+        for l in range(2, self.num_layers):
+            delta = self.cost_derivative(activations[-l], delta) * self.sigmoid_prime(zs[-l])
+            nabla_b[-l] = delta
+            nabla_w[-l] = np.dot(delta, activations[-1 + 1].transpose())
+        
+        return (nabla_b, nabla_w)
+
+
 
     def cost_derivative(output, correct_output):
-        return correct_output - output
+        return output - correct_output
 
     # the sigmoid function
     def sigmoid(self, z):
