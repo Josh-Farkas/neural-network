@@ -1,5 +1,5 @@
 import numpy as np
-import helpers.utils as utils
+import network.helpers.utils as utils
 
 class Layer:
     def __init__(self, size):
@@ -44,6 +44,7 @@ class Dense(Layer):
         # biases of this layer
         # self.biases = np.random.randn(size)
         self.biases = np.random.randn(size)
+        self.nabla_b = np.zeros(self.biases.shape)
 
         self.activation_func, self.activation_func_prime = utils.funcs[activation_func.lower()]
 
@@ -61,6 +62,7 @@ class Dense(Layer):
 
         # weights between previous layer and this layer
         self.weights = np.random.randn(prev_size[0], self.size[0])
+        self.nabla_w = np.zeros(self.weights.shape)
 
 
     def feedforward(self, activation):
@@ -76,21 +78,24 @@ class Dense(Layer):
         return self.activations
 
 
-    def backprop(self, error, batch_size):
+    def backprop(self, error):
         self.error = error
         
-        nabla_b = error
-        nabla_w = np.dot(np.reshape(self.input_activations, (-1, 1)), np.reshape(error, (1, -1)))
-
-        # update weights and biases
-        self.weights = self.weights - self.lr * nabla_w / batch_size
-        self.biases = self.biases - self.lr * nabla_b / batch_size
+        self.nabla_b += error
+        self.nabla_w += np.dot(np.reshape(self.input_activations, (-1, 1)), np.reshape(error, (1, -1)))
 
         if self.is_first: return
-        
+
         prev_layer_error = np.dot(self.weights, error) * self.activation_func_prime(self.prev_layer.zs)
         return prev_layer_error
 
+    def update(self, batch_size):
+        # update weights and biases
+        self.biases = self.biases - self.lr * self.nabla_b / batch_size
+        self.weights = self.weights - self.lr * self.nabla_w / batch_size
+
+        self.nabla_b = np.zeros(self.nabla_b.shape)
+        self.nabla_w = np.zeros(self.nabla_w.shape)
 
 
 class Convolutional(Layer):

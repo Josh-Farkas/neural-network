@@ -1,8 +1,8 @@
 import numpy as np
 import random
-import helpers.mnist_loader as loader
-import helpers.utils as utils
-import layers
+# import helpers.mnist_loader as loader
+import network.helpers.utils as utils
+from network.layers import *
 
 
 class Network:
@@ -27,17 +27,17 @@ class Network:
         return activation
 
 
-    def SGD(self, training_data, epochs, mini_batch_size, test_data = None):
+    def fit(self, training_data, epochs, mini_batch_size, test_data = None):
         """
         For each epoch, divide all of the training data into mini batches
         and for each mini batch apply backpropogation to each input and
         update the network.
         """
         training_data = [(x.flatten(), y.flatten()) for x, y in training_data]
-        test_data = [(x.flatten(), y.flatten()) for x, y in test_data]
 
         if test_data: 
             test_data = list(test_data)
+            test_data = [(x.flatten(), y.flatten()) for x, y in test_data]
             n_test = len(test_data)
 
         if training_data is not list:
@@ -66,10 +66,13 @@ class Network:
 
     def update_mini_batch(self, mini_batch):
         for input, correct in mini_batch:
-            self.backprop(input, correct, len(mini_batch))
+            self.backprop(input, correct)
+        
+        for layer in self.layers:
+            layer.update(len(mini_batch))
 
 
-    def backprop(self, activation, correct, batch_size):
+    def backprop(self, activation, correct):
         # feedforward so all layers store their z and activation for later use
         self.feedforward(activation)
 
@@ -78,7 +81,30 @@ class Network:
         # print(f'Last Layer Error: {error}')
 
         for layer in reversed(self.layers):
-            error = layer.backprop(error, batch_size)
+            error = layer.backprop(error)
+
+
+    def get_layers(self):
+        return self.layers
+    
+    def set_layers(self, layers):
+        self.layers = layers
+
+
+    def get_weights(self):
+        return [layer.weights for layer in self.layers]
+
+    def set_weights(self, weights):
+        for layer, weight in zip(self.layers, weights):
+            layer.weights = weight
+    
+
+    def get_biases(self):
+        return [layer.biases for layer in self.layers]
+        
+    def set_biases(self, biases):
+        for layer, bias, in zip(self.layers, biases):
+            layer.biases = bias
 
 
 
@@ -86,11 +112,11 @@ def main():
     training_data, validation_data, test_data = loader.load_data_wrapper()
     # net = Network([784, 30, 50, 10], 3.0, 10)
     net = Network(lr=3.)
-    net.add(layers.Dense(30, activation_func="sigmoid", input_size = (784,)))
+    net.add(Dense(30, activation_func="sigmoid", input_size = (784,)))
     # net.add_layer(layers.Dense(30, activation_func_name="ReLU"))
-    net.add(layers.Dense(10, activation_func="sigmoid"))
+    net.add(Dense(10, activation_func="sigmoid"))
 
-    net.SGD(training_data, 30, 10, test_data)
+    net.fit(training_data, 30, 10, test_data)
 
 
 

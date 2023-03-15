@@ -5,7 +5,7 @@ import numpy as np
 
 ENV_NAME = "CartPole-v1"
 STEPS_TO_UPDATE = 100
-BATCH_SIZE = 20
+BATCH_SIZE = 32
 LEARNING_RATE = 0.00025
 N_EPISODES = 1000
 SEED = 50
@@ -22,7 +22,12 @@ observation, info = env.reset(seed=SEED)
 # n_obs = env.observation_space[0].n
 # n_act = env.action_space.n
 
-agent = dqn.DQNAgent(4, 2, [24, 24], learning_rate=LEARNING_RATE, memory_size=MEMORY_SIZE)
+agent = dqn.DQNAgent(
+    n_state=4, 
+    hidden_sizes=[24, 24], 
+    n_actions=2, 
+    learning_rate=LEARNING_RATE, 
+    memory_size=MEMORY_SIZE)
 
 # print(agent.main_net.get_weights())
 steps = 0
@@ -47,7 +52,6 @@ for episode in range(N_EPISODES):
         agent.train(BATCH_SIZE)
 
         if terminated or truncated:
-            print(f'Episode {episode} lasted for {steps-start_steps} steps')
             # print(episode_reward)
             if steps >= STEPS_TO_UPDATE:
                 agent.update_target()
@@ -57,5 +61,4 @@ for episode in range(N_EPISODES):
     # if episode == 900:
     #     env.render()
 
-print(agent.main_net.get_weights())
 env.close()
