@@ -1,5 +1,9 @@
-import numpy as np
+a = [1, 2, 43]
 
-a = np.ones(10,)
-b = np.zeros(10,)
-print(a-b)
+
+def foo(arr):
+    arr.append("1999")
+
+
+foo(a)
+print(a)

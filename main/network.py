@@ -1,26 +1,52 @@
 import numpy as np
 import random
-# import helpers.mnist_loader as loader
-import network.helpers.utils as utils
-from network.layers import *
+import pickle
+
+import helpers.mnist_loader as loader
+import helpers.utils as utils
+from layers import *
+
+import matplotlib.pyplot as plt
 
 
 class Network:
-    def __init__(self, layers=[], lr=0.001):
+    def __init__(self, layers=[], lr=0.0001):
         for prev, layer in zip(layers[:-1], layers[1:]):
             layer.prev_layer = prev
 
-        self.layers = layers
+        self.layers = []
         self.lr = lr
+        self.len = 0
+
+        for layer in layers:
+            self.add(layer)
+        
+        self.backprop_count = 0
+        self.errors = np.array([])
+        
+
+    def plot_err(self, x_axis, y_axis):
+        plt.plot(x_axis, y_axis)
+        plt.title('Error')
+        plt.xlabel('Iteration')
+        plt.ylabel('Error')
+        plt.show()
 
 
     def add(self, layer):
         self.layers.append(layer)
         layer.on_add(self)
 
+        self.len += 1
+        self.weights = [layer.weights if layer is Dense 
+                        else layer.kernel if layer is Convolutional 
+                        else None for layer in self.layers]
+        self.biases = [layer.biases if layer is Dense 
+                       or layer is Convolutional 
+                       else None for layer in self.layers]
+
 
     def feedforward(self, activation):
-        pass
         for layer in self.layers:
             activation = layer.feedforward(activation)
 
@@ -33,15 +59,14 @@ class Network:
         and for each mini batch apply backpropogation to each input and
         update the network.
         """
-        training_data = [(x.flatten(), y.flatten()) for x, y in training_data]
+        # training_data = [(x.reshape(28,28), y.flatten()) for x, y in training_data]
+        # training_data = training_data[:100]
 
         if test_data: 
             test_data = list(test_data)
-            test_data = [(x.flatten(), y.flatten()) for x, y in test_data]
+            test_data = [(x.reshape(28,28), y.flatten()) for x, y in test_data]
+            # test_data = [(x.flatten(), y.flatten()) for x, y in test_data]
             n_test = len(test_data)
-
-        if training_data is not list:
-            training_data = list(training_data)
 
         for epoch in range(epochs):
             # randomize order of training data so you get different mini batches every epoch
@@ -62,11 +87,16 @@ class Network:
                 
                 num_correct = sum(int(x == y) for (x, y) in outputs)
                 print(f"Epoch {epoch}: {num_correct}/{n_test} identified correctly")
+        
+        self.weights = [layer.weights for layer in self.layers]
+        self.biases = [layer.biases for layer in self.layers]
+        
 
 
     def update_mini_batch(self, mini_batch):
         for input, correct in mini_batch:
             self.backprop(input, correct)
+            # print(self.feedforward(input))
         
         for layer in self.layers:
             layer.update(len(mini_batch))
@@ -77,12 +107,16 @@ class Network:
         self.feedforward(activation)
 
         error = utils.cost_derivative(self.layers[-1].activations, correct) * self.layers[-1].activation_func_prime(self.layers[-1].zs)
+        # print(error)
+        self.errors = np.append(self.errors, np.mean(error))
 
-        # print(f'Last Layer Error: {error}')
+        self.backprop_count += 1
+        if self.backprop_count % 10000 == 0:
+            self.plot_err(range(self.backprop_count), self.errors)    
 
         for layer in reversed(self.layers):
             error = layer.backprop(error)
-
+        
 
     def get_layers(self):
         return self.layers
@@ -90,14 +124,12 @@ class Network:
     def set_layers(self, layers):
         self.layers = layers
 
-
     def get_weights(self):
         return [layer.weights for layer in self.layers]
 
     def set_weights(self, weights):
         for layer, weight in zip(self.layers, weights):
             layer.weights = weight
-    
 
     def get_biases(self):
         return [layer.biases for layer in self.layers]
@@ -107,18 +139,48 @@ class Network:
             layer.biases = bias
 
 
+    def save(self, fname):
+        with open(fname, 'wb+') as f:
+            pickle.dump(self, f)
+
+        # # god awful dict comprehension, alternating dict of weights and biases
+        # # arrs = {f'{name}{idx}':arr[idx]
+        # #         for name, arr in zip(['w', 'b'], [self.weights, self.biases]) 
+        # #         for idx in range(self.len)}
+
+
+    
+def load(fname):
+    try:
+        with open(fname, 'rb') as f:
+            return pickle.load(f)
+
+    except OSError:
+        print("ERROR: File not found.")
+        return
+
 
 def main():
     training_data, validation_data, test_data = loader.load_data_wrapper()
-    # net = Network([784, 30, 50, 10], 3.0, 10)
-    net = Network(lr=3.)
-    net.add(Dense(30, activation_func="sigmoid", input_size = (784,)))
-    # net.add_layer(layers.Dense(30, activation_func_name="ReLU"))
-    net.add(Dense(10, activation_func="sigmoid"))
+    net = Network(lr=.0024)
+    # net.add(Convolutional(input_size=(28, 28), kernel_size=3, activation_func="relu", padding=0, strides=1))
+    # net.add(Convolutional(kernel_size=3, activation_func="relu"))
+    # net.add(Pooling(2))
+    # net.add(Flatten())
+    net.add(Dense((100,), activation_func="relu"))
+    net.add(Dense((10,), activation_func="linear"))
+
 
     net.fit(training_data, 30, 10, test_data)
 
+    # fname = 'test.npz'
+    # # with open(fname, 'wb') as f:
+    # #     net.save(f)
 
+    # with open(fname, 'rb') as f:
+    #     net = Network.load(fname)
+
+    # net.fit(training_data, 3, 10, test_data)
 
 if __name__ == '__main__':
     main()

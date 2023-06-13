@@ -1,64 +1,71 @@
-import dqn_agent as dqn
+import DQN
 import gymnasium as gym
 import numpy as np
+from layers import Dense
 
-
-ENV_NAME = "CartPole-v1"
+print(gym.envs.registry.keys())
+ENV_NAME = 'CartPole-v1'
 STEPS_TO_UPDATE = 100
 BATCH_SIZE = 32
-LEARNING_RATE = 0.00025
-N_EPISODES = 1000
-SEED = 50
 MEMORY_SIZE = 100000
+LEARNING_RATE = 0.000025
+N_EPISODES = 200
+SEED = None
+SAVE_FILE = 'models/Agent.pkl'
+
 
 env = gym.make(ENV_NAME, render_mode="human")
-#  render_mode="human"
-env.reset()
-# env.render()
 observation, info = env.reset(seed=SEED)
-# print(env.action_space)
 
+obs_shape = env.observation_space.shape
+n_actions = env.action_space.n
 
-# n_obs = env.observation_space[0].n
-# n_act = env.action_space.n
+layers = [
+    Dense((24,), input_size=obs_shape, activation_func='relu'),
+    Dense((24,), activation_func='relu'),
+    Dense((n_actions,), activation_func='linear')
+]
 
-agent = dqn.DQNAgent(
-    n_state=4, 
-    hidden_sizes=[24, 24], 
-    n_actions=2, 
-    learning_rate=LEARNING_RATE, 
+agent = DQN.DoubleDQNAgent(
+    n_actions=n_actions, 
+    layers=layers,
+    epsilon_decay=.996,
+    lr=LEARNING_RATE,
     memory_size=MEMORY_SIZE)
+
+# agent = DQN.load(SAVE_FILE)
 
 # print(agent.main_net.get_weights())
 steps = 0
+epsteps = 0
 # env.render()
 for episode in range(N_EPISODES):
     print(f'Episode: {episode}')
     terminated = False
     truncated = False
-    start_steps = 0
     while not (terminated or truncated):
         steps += 1
-        action = agent.choose_action(observation)
+        epsteps += 1
+        action = agent.act(observation)
         # print(action)
         next_observation, reward, terminated, truncated, info = env.step(np.array(action))
-        # reward = reward if not terminated else -10*reward
-        # print(reward)
+        # reward = reward if not terminated else reward - 10
 
-        agent.store_memory(observation, action, reward, next_observation, terminated or truncated)
+        agent.remember(observation, action, reward, next_observation, terminated or truncated)
         observation = next_observation
-        # episode_reward += reward
-        # if steps % 4 == 0:
         agent.train(BATCH_SIZE)
 
         if terminated or truncated:
-            # print(episode_reward)
+            print(f'Steps: {epsteps}')
+            epsteps = 0
             if steps >= STEPS_TO_UPDATE:
                 agent.update_target()
                 steps = 0
+                
 
     observation, info = env.reset()
-    # if episode == 900:
-    #     env.render()
+
+
+agent.save(SAVE_FILE)
 
 env.close()
